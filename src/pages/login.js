@@ -1,5 +1,7 @@
 import React, {Component} from 'react';
-import { View, Container, Icon, Content, Input, Item, Button, Text, Form, Label } from 'native-base';
+import {AsyncStorage, Alert, Image} from 'react-native';
+import { View, Container, Content, Input, Item, Button, Text, Form, Label } from 'native-base';
+import api from '../services/api'
 
 export default class Login extends Component{
 
@@ -7,7 +9,43 @@ export default class Login extends Component{
         title: "OurControl"
     }
 
-    render() {
+    state = {
+        errorMessage: null,
+        login: null,
+        password: null
+    }
+
+    signIn = async () => {
+
+        try{
+
+            const response = await api.post('/login.json', {
+                login: this.state.login,
+                password: this.state.password
+            });
+
+            if(response.data.token){
+
+                await AsyncStorage.multiSet([
+                    ['@Api:token', response.data.token],
+                    ['@Api:checkin', JSON.stringify(response.data.checkin)]
+                ]); 
+                
+                    Alert.alert('Login realizado com sucesso!');
+                    this.props.navigation.navigate("Checkin");
+
+            }else if(response.data.status === 'unauthorized'){
+                Alert.alert('Opa! Não foi possível acessar, verifique seu login e senha!');
+            }else{
+                Alert.alert('Conecte-se à rede da Jambu e tente novamente!');
+            }
+
+        } catch (response){
+            this.setState({errorMessage : response.data.error});
+        }
+    }   
+
+    render() { 
     
         return (
         <Container >
@@ -15,17 +53,17 @@ export default class Login extends Component{
               <Form>
                 <Item floatingLabel last>
                     <Label>Usuário</Label>
-                    <Input name='user' />
+                    <Input name='login' onChangeText={(text)=>{this.setState({login: text})}}/>
                 </Item>
                 <Item floatingLabel last>
                     <Label>Senha</Label>
-                    <Input name='password' secureTextEntry/>
+                    <Input name='password' onChangeText={(text)=>{ this.setState({password: text})}} secureTextEntry/>
                 </Item>
              </Form>
              <View style={{marginTop: 40, justifyContent: "center"}}>
-                <Button rounded block success onPress={() => {this.props.navigation.navigate("Checkin")}} >
-                    <Text>Entrar</Text>
-                </Button>
+            <Button rounded block success onPress={this.signIn} >
+                <Text>Entrar</Text>
+            </Button>
             </View>
               
               </Content>
